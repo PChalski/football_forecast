@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+*.egg-info/
+
+# Dane (jeśli chcesz trzymać je lokalnie)
+data/
+
+# Modele i wyniki
+models/
+results/
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# System
+.DS_Store
