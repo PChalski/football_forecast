@@ -4,7 +4,7 @@ import pandas as pd
 DATA_DIR = "data"
 DATE_COL = "Date" 
 
-def extract_season(df):
+def extract_season(df : pd.DataFrame) -> str:
     """
     Returns season years as a string ('1617' for 2016/2017) after checking year of first match of the season.
     """
@@ -19,7 +19,7 @@ def extract_season(df):
 
 def rename_csv(base_dir):
     """
-    Renames csv file to its {league}_{season}
+    Renames csv files from base_dir to its {league}_{season}
     """
     
     for league_name in os.listdir(base_dir): # csv files for each league in different directory "league_name"
@@ -36,7 +36,7 @@ def rename_csv(base_dir):
             try:
                 df = pd.read_csv(file_path)
                 if DATE_COL not in df.columns:
-                    print(f" Column {DATE_COL} does not exists in {file_path}, skipping...")
+                    print(f" Column {DATE_COL} not in {file_path}, skipping...")
                     continue
 
                 season = extract_season(df)
