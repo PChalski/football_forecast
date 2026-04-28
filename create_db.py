@@ -22,9 +22,9 @@ def create_connection():
     return duckdb.connect(DB_PATH)
 
 def add_avg_odds(df: pd.DataFrame) -> pd.DataFrame:
-    df_odds_H = df[ODDS_COLS_H].replace(0, pd.NA)
-    df_odds_D = df[ODDS_COLS_D].replace(0, pd.NA)
-    df_odds_A = df[ODDS_COLS_A].replace(0, pd.NA)
+    df_odds_H = df[ODDS_COLS_H]
+    df_odds_D = df[ODDS_COLS_D]
+    df_odds_A = df[ODDS_COLS_A]
     df["avg_odds_H"] = df_odds_H.mean(axis=1, skipna=True)
     df["avg_odds_D"] = df_odds_D.mean(axis=1, skipna=True)
     df["avg_odds_A"] = df_odds_A.mean(axis=1, skipna=True)

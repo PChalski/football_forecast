@@ -91,14 +91,17 @@ def compute_elo_ratings():
 
     df_elo = pd.DataFrame(all_elo)
 
-    df_elo["elo_prob_H"] = df_elo["elo_diff"].apply(
+    df_elo["elo_prob_H_d"] = df_elo["elo_diff"].apply(
         lambda d: 1 / (1 + math.pow(10, -d / 400))
     )
-    df_elo["elo_prob_A"] = df_elo["elo_diff"].apply(
+    df_elo["elo_prob_A_d"] = df_elo["elo_diff"].apply(
         lambda d: 1 / (1 + math.pow(10, d / 400))
     )
-    df_elo["elo_prob_D"] = 1 - df_elo["elo_prob_H"] - df_elo["elo_prob_A"]
-    df_elo["elo_prob_D"] = df_elo["elo_prob_D"].clip(lower=0)
+    df_elo["draw_factor"] = 0.26
+    
+    df_elo["elo_prob_H"] = df_elo["elo_prob_H_d"] * (1 - df_elo["draw_factor"])
+    df_elo["elo_prob_A"] = df_elo["elo_prob_A_d"] * (1 - df_elo["draw_factor"])
+    df_elo["elo_prob_D"] = df_elo["draw_factor"]
 
     conn.register("df_elo", df_elo)
     conn.execute("""
