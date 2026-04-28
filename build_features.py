@@ -6,19 +6,21 @@ import numpy as np
 DB_PATH = os.path.join("database", "football.db")
 LEAGUES = ["PL", "SA", "LL"]
 
+TRAIN_SEASONS = ["1617", "1718", "1819", "1920", "2021", "2122", "2223", "2324"]
+
 def get_connection():
     return duckdb.connect(DB_PATH)
+
+def calculate_home_advantage(df, league):
+    train_df = df[df["season"].isin(TRAIN_SEASONS)]
+    return (train_df["result"] == "H").mean()
 
 def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15]) -> pd.DataFrame:
     df = df.sort_values("match_date").reset_index(drop=True)
     team_history = {}
     prev_season_positions = {}
 
-    home_advantage = {
-        "PL": 0.464,
-        "SA": 0.461,
-        "LL": 0.478
-    }
+    home_advantage = {league: calculate_home_advantage(df, league) for league in LEAGUES}
 
     current_season = None
 
