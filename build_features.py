@@ -12,14 +12,7 @@ def get_connection():
 def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15]) -> pd.DataFrame:
     df = df.sort_values("match_date").reset_index(drop=True)
     team_history = {}
-
-    for n in n_values:
-        df[f"home_form_{n}"] = 0.0
-        df[f"away_form_{n}"] = 0.0
-        df[f"form_diff_{n}"] = 0.0
-        df[f"home_gd_{n}"] = 0.0
-        df[f"away_gd_{n}"] = 0.0
-        df[f"gd_diff_{n}"] = 0.0
+    prev_season_positions = {}
 
     home_advantage = {
         "PL": 0.464,
@@ -27,14 +20,26 @@ def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15]) -> pd.D
         "LL": 0.478
     }
 
+    current_season = None
+
     for idx, row in df.iterrows():
         home = row["home_team"]
         away = row["away_team"]
         league = row["league"]
+        season = row["season"]
+
+        if season != current_season:
+            if current_season is not None:
+                prev_season_positions[league] = season_points.copy()
+            current_season = season
+            season_points = {}
 
         for team in [home, away]:
             if team not in team_history:
-                team_history[team] = {"points": [], "goal_diff": []}
+                team_history[team] = {
+                    "points": [], "goal_diff": [],
+                    "home_points": [], "away_points": []
+                }
 
         for n in n_values:
             if len(team_history[home]["points"]) >= n:
@@ -63,23 +68,72 @@ def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15]) -> pd.D
             df.at[idx, f"away_gd_{n}"] = away_gd
             df.at[idx, f"gd_diff_{n}"] = home_gd - away_gd
 
+        if len(team_history[home]["home_points"]) >= 5:
+            df.at[idx, "home_form_only"] = sum(team_history[home]["home_points"][-5:])
+        else:
+            df.at[idx, "home_form_only"] = 0
+        if len(team_history[away]["away_points"]) >= 5:
+            df.at[idx, "away_form_only"] = sum(team_history[away]["away_points"][-5:])
+        else:
+            df.at[idx, "away_form_only"] = 0
+
+        df.at[idx, "home_away_form_diff"] = df.at[idx, "home_form_only"] - df.at[idx, "away_form_only"]
+
         df.at[idx, "home_advantage"] = home_advantage.get(league, 0.46)
+
+        if league in prev_season_positions:
+            home_prev = prev_season_positions[league].get(home, 10)
+            away_prev = prev_season_positions[league].get(away, 10)
+        else:
+            home_prev = 10
+            away_prev = 10
+
+        df.at[idx, "home_prev_pos"] = home_prev
+        df.at[idx, "away_prev_pos"] = away_prev
+        df.at[idx, "league_pos_diff"] = away_prev - home_prev
 
         if row["result"] == "H":
             team_history[home]["points"].append(3)
             team_history[away]["points"].append(0)
+            team_history[home]["home_points"].append(3)
+            team_history[away]["away_points"].append(0)
             team_history[home]["goal_diff"].append(row["home_goals"] - row["away_goals"])
             team_history[away]["goal_diff"].append(row["away_goals"] - row["home_goals"])
+
+            if home not in season_points:
+                season_points[home] = 0
+            if away not in season_points:
+                season_points[away] = 0
+            season_points[home] += 3
+
         elif row["result"] == "A":
             team_history[home]["points"].append(0)
             team_history[away]["points"].append(3)
+            team_history[home]["home_points"].append(0)
+            team_history[away]["away_points"].append(3)
             team_history[home]["goal_diff"].append(row["home_goals"] - row["away_goals"])
             team_history[away]["goal_diff"].append(row["away_goals"] - row["home_goals"])
+
+            if home not in season_points:
+                season_points[home] = 0
+            if away not in season_points:
+                season_points[away] = 0
+            season_points[away] += 3
+
         else:
             team_history[home]["points"].append(1)
             team_history[away]["points"].append(1)
+            team_history[home]["home_points"].append(1)
+            team_history[away]["away_points"].append(1)
             team_history[home]["goal_diff"].append(row["home_goals"] - row["away_goals"])
             team_history[away]["goal_diff"].append(row["away_goals"] - row["home_goals"])
+
+            if home not in season_points:
+                season_points[home] = 0
+            if away not in season_points:
+                season_points[away] = 0
+            season_points[home] += 1
+            season_points[away] += 1
 
     return df
 
@@ -111,7 +165,8 @@ def build_features_tables():
         ]
         feature_cols += [f"form_diff_{n}" for n in n_values]
         feature_cols += [f"gd_diff_{n}" for n in n_values]
-        feature_cols += ["home_advantage"]
+        feature_cols += ["home_advantage", "home_away_form_diff", "league_pos_diff"]
+
         feature_cols += [c for c in df.columns if c.startswith("league_")]
 
         df_features = df[feature_cols].copy()
