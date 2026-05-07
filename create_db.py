@@ -4,7 +4,7 @@ import duckdb
 import pandas as pd
 from load_data import load_league
 
-DB_PATH = os.path.join("database", "football.db")
+DB_PATH = os.path.join("database", "results.db")
 DATA_DIR = "data"
 
 LEAGUES = {

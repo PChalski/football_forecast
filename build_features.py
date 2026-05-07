@@ -3,7 +3,7 @@ import duckdb
 import pandas as pd
 import numpy as np
 
-DB_PATH = os.path.join("database", "football.db")
+DB_PATH = os.path.join("database", "results.db")
 LEAGUES = ["PL", "SA", "LL"]
 
 TRAIN_SEASONS = ["1617", "1718", "1819", "1920", "2021", "2122", "2223", "2324"]
