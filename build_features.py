@@ -11,16 +11,19 @@ TRAIN_SEASONS = ["1617", "1718", "1819", "1920", "2021", "2122", "2223", "2324"]
 def get_connection():
     return duckdb.connect(DB_PATH)
 
-def calculate_home_advantage(df, league):
-    train_df = df[df["season"].isin(TRAIN_SEASONS)]
+def calculate_home_advantage(df, league, train_seasons=None):
+    if train_seasons is None:
+        train_seasons = TRAIN_SEASONS
+    train_df = df[df["season"].isin(train_seasons)]
     return (train_df["result"] == "H").mean()
 
-def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15]) -> pd.DataFrame:
+def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15], train_seasons=None) -> pd.DataFrame:
     df = df.sort_values("match_date").reset_index(drop=True)
     team_history = {}
     prev_season_positions = {}
 
-    home_advantage = {league: calculate_home_advantage(df, league) for league in LEAGUES}
+    leagues_in_data = list(df['league'].unique()) if 'league' in df.columns else LEAGUES
+    home_advantage = {l: calculate_home_advantage(df, l, train_seasons) for l in leagues_in_data}
 
     current_season = None
 
