@@ -148,8 +148,7 @@ def build_features_tables():
         query = f"""
             SELECT match_date, home_team, away_team, home_goals, away_goals, 
                    result, season, league,
-                   avg_odds_H, avg_odds_D, avg_odds_A,
-                   implied_H, implied_D, implied_A
+                   avg_odds_H, avg_odds_D, avg_odds_A
             FROM matches_raw
             WHERE league = '{league}'
             ORDER BY match_date
@@ -157,19 +156,12 @@ def build_features_tables():
         df = conn.execute(query).df()
         df = add_rolling_features(df, n_values)
 
-        league_cols = pd.get_dummies(df["league"], prefix="league")
-        df = pd.concat([df, league_cols], axis=1)
-
         feature_cols = [
             "match_date", "home_team", "away_team", "result", "season", "league",
-            "avg_odds_H", "avg_odds_D", "avg_odds_A",
-            "implied_H", "implied_D", "implied_A"
+            "avg_odds_H", "avg_odds_D", "avg_odds_A"
+        ] + [f"form_diff_{n}" for n in n_values] + [f"gd_diff_{n}" for n in n_values] + [
+            "home_advantage", "home_away_form_diff", "league_pos_diff"
         ]
-        feature_cols += [f"form_diff_{n}" for n in n_values]
-        feature_cols += [f"gd_diff_{n}" for n in n_values]
-        feature_cols += ["home_advantage", "home_away_form_diff", "league_pos_diff"]
-
-        feature_cols += [c for c in df.columns if c.startswith("league_")]
 
         df_features = df[feature_cols].copy()
 
