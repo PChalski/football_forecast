@@ -2,16 +2,17 @@ import os
 import duckdb
 import pandas as pd
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
 
 DB_PATH = os.path.join("database", "results.db")
-LEAGUES = ["PL", "SA", "LL"]
 
 TRAIN_SEASONS = ["1617", "1718", "1819", "1920", "2021", "2122", "2223", "2324"]
 
 def get_connection():
     return duckdb.connect(DB_PATH)
 
-def calculate_home_advantage(df, league, train_seasons=None):
+def calculate_home_advantage(df, train_seasons=None):
     if train_seasons is None:
         train_seasons = TRAIN_SEASONS
     train_df = df[df["season"].isin(train_seasons)]
@@ -19,13 +20,22 @@ def calculate_home_advantage(df, league, train_seasons=None):
 
 def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15], train_seasons=None) -> pd.DataFrame:
     df = df.sort_values("match_date").reset_index(drop=True)
+    
+    leagues_in_data = list(df['league'].unique()) if 'league' in df.columns else list(df['league'].unique())
+    home_advantage = {l: calculate_home_advantage(df, train_seasons) for l in leagues_in_data}
+    
+    for n in n_values:
+        df[f'form_diff_{n}'] = 0.0
+        df[f'gd_diff_{n}'] = 0.0
+    
+    df['home_advantage'] = 0.46
+    df['home_away_form_diff'] = 0.0
+    df['league_pos_diff'] = 0.0
+    
     team_history = {}
     prev_season_positions = {}
-
-    leagues_in_data = list(df['league'].unique()) if 'league' in df.columns else LEAGUES
-    home_advantage = {l: calculate_home_advantage(df, l, train_seasons) for l in leagues_in_data}
-
     current_season = None
+    season_points = {}
 
     for idx, row in df.iterrows():
         home = row["home_team"]
@@ -140,13 +150,16 @@ def add_rolling_features(df: pd.DataFrame, n_values: list = [5, 10, 15], train_s
             season_points[home] += 1
             season_points[away] += 1
 
-    return df
+    return df.copy()
+
+def find_leagues(conn):
+    return [r[0] for r in conn.execute("SELECT DISTINCT league FROM matches_raw ORDER BY league").fetchall()]
 
 def build_features_tables():
     conn = get_connection()
     n_values = [5, 10, 15]
 
-    for league in LEAGUES:
+    for league in find_leagues(conn):
         print(f"Processing {league}...")
         query = f"""
             SELECT match_date, home_team, away_team, home_goals, away_goals, 
@@ -157,6 +170,9 @@ def build_features_tables():
             ORDER BY match_date
         """
         df = conn.execute(query).df()
+        if df.empty:
+            print(f"  No data for {league}, skipping")
+            continue
         df = add_rolling_features(df, n_values)
 
         feature_cols = [
